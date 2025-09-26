@@ -31,4 +31,9 @@ class ClickConfig {
     EnricherService enricherService(UserAgentParser userAgentParser, IpParser ipParser) {
         return new EnricherService(userAgentParser, ipParser);
     }
+
+    @Bean
+    LinkLifecycleConsumer linkLifecycleConsumer(AnalyticsLinkRepository repository) {
+        return new LinkLifecycleConsumer(repository);
+    }
 }

@@ -2,6 +2,7 @@ package pl.bpiatek.linkshorteneranalyticsservice.click;
 
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import pl.bpiatek.linkshorteneranalyticsservice.config.ClockConfiguration;
 
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Map;
 
 @Component
@@ -17,12 +19,16 @@ import java.util.Map;
 @ActiveProfiles("test")
 class AnalyticLinkFixtures {
 
-    private static final RowMapper<AnalyticsLink> ANALYTICS_LINK_ROW_MAPPER = (rs, rowNum) -> new AnalyticsLink(
-            rs.getString("short_url"),
-            rs.getString("link_id"),
-            rs.getString("user_id"),
-            rs.getBoolean("is_active")
-    );
+    private static final RowMapper<TestAnalyticsLink> ANALYTICS_LINK_ROW_MAPPER = (rs, rowNum) -> TestAnalyticsLink.builder()
+            .withShortUrl(rs.getString("short_url"))
+            .withLinkId(rs.getString("link_id"))
+            .withUserId(rs.getString("user_id"))
+            .withIsActive(rs.getBoolean("is_active"))
+            .withCreatedAt(rs.getTimestamp("created_at").toInstant())
+            .withUpdatedAt(rs.getTimestamp("updated_at").toInstant())
+            .withDeletedAt(rs.getTimestamp("deleted_at") != null ? rs.getTimestamp("deleted_at").toInstant() : null)
+            .build();
+
 
     private final Clock clock;
     private final SimpleJdbcInsert linkInsert;
@@ -36,9 +42,9 @@ class AnalyticLinkFixtures {
         this.namedJdbcTemplate = namedJdbcTemplate;
     }
 
-    AnalyticsLink getLinkByShortUrl(String shortUrl) {
+    TestAnalyticsLink getLinkByShortUrl(String shortUrl) {
         var sql = """
-                SELECT al.short_url, al.link_id, al.user_id, al.is_active
+                SELECT al.short_url, al.link_id, al.user_id, al.is_active, al.created_at, al.updated_at, al.deleted_at
                 FROM analytics_links al
                 WHERE al.short_url = :shortUrl""";
 
@@ -47,18 +53,30 @@ class AnalyticLinkFixtures {
         return result.isEmpty() ? null : result.getFirst();
     }
 
-    AnalyticsLink anAnalyticsLink(TestAnalyticsLink link) {
+    TestAnalyticsLink anAnalyticsLink() {
+        return anAnalyticsLink(TestAnalyticsLink.builder().build());
+    }
+
+    TestAnalyticsLink anAnalyticsLink(TestAnalyticsLink link) {
         var now = Timestamp.from(clock.instant());
 
-        Map<String, Object> params = Map.of(
-                "short_url", link.getShortUrl(),
-                "link_id", link.getLinkId(),
-                "user_id", link.getUserId(),
-                "is_active", link.isActive(),
-                "updated_at", now);
+        var params = new MapSqlParameterSource()
+                .addValue("short_url", link.getShortUrl())
+                .addValue("link_id", link.getLinkId())
+                .addValue("user_id", link.getUserId())
+                .addValue("is_active", link.isActive())
+                .addValue("created_at", toTimestampOrDefault(link.getCreatedAt(), now))
+                .addValue("updated_at", toTimestampOrDefault(link.getUpdatedAt(), now))
+                .addValue("deleted_at", toTimestampOrDefault(link.getDeletedAt(), null));
 
-       linkInsert.execute(params);
+        linkInsert.execute(params);
 
        return getLinkByShortUrl(link.getShortUrl());
+    }
+
+    private Timestamp toTimestampOrDefault(Instant provided, Timestamp defaultValue) {
+        return provided != null
+                ? Timestamp.from(provided)
+                : defaultValue;
     }
 }

@@ -70,9 +70,9 @@ class ClickEventConsumerIT implements WithFullInfrastructure {
             var clickFromDB = clickFixtures.getClickByShortUrl(shortUrl);
             assertThat(clickFromDB).isNotNull();
             assertSoftly(s -> {
-                s.assertThat(clickFromDB.linkId()).isEqualTo(analyticsLink.linkId());
-                s.assertThat(clickFromDB.userId()).isEqualTo(analyticsLink.userId());
-                s.assertThat(clickFromDB.shortUrl()).isEqualTo(analyticsLink.shortUrl());
+                s.assertThat(clickFromDB.linkId()).isEqualTo(analyticsLink.getLinkId());
+                s.assertThat(clickFromDB.userId()).isEqualTo(analyticsLink.getUserId());
+                s.assertThat(clickFromDB.shortUrl()).isEqualTo(analyticsLink.getShortUrl());
                 s.assertThat(Timestamp.newBuilder().setNanos(clickFromDB.clickedAt().getNano()).build())
                         .isEqualTo(event.getClickedAt());
                 s.assertThat(clickFromDB.ipAddress()).isEqualTo(event.getIpAddress());

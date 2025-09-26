@@ -1,5 +1,6 @@
 package pl.bpiatek.linkshorteneranalyticsservice.click;
 
+import java.time.Instant;
 import java.util.Optional;
 
 interface AnalyticsLinkRepository {
@@ -8,5 +9,8 @@ interface AnalyticsLinkRepository {
 
     void save(AnalyticsLink link);
 
-    void deactivate(String shortUrl);
+    void markAsDeleted(String shortUrl, Instant deletedAt);
+
+    void updateStatus(String shortUrl, boolean isActive);
+
 }

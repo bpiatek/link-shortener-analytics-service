@@ -4,23 +4,19 @@ import java.time.Instant;
 
 record EnrichedClick(
         Long id,
-        // --- Core Identifiers ---
-        String clickId,      // The unique ID for this click event (e.g., a deterministic UUID)
-        String linkId,       // The ID of the link entity
-        String userId,       // The ID of the user who owns the link
-        String shortUrl,     // The short URL that was clicked
+        String clickId,
+        String linkId,
+        String userId,
+        String shortUrl,
 
-        // --- Raw Data (for auditing) ---
-        Instant clickedAt,   // The timestamp of the click
+        Instant clickedAt,
         String ipAddress,
         String userAgent,
 
-        // --- GeoIP Enrichment ---
         String countryCode,
         String cityName,
         String asn,
 
-        // --- User-Agent Enrichment ---
         String deviceType,
         String osName,
         String browserName

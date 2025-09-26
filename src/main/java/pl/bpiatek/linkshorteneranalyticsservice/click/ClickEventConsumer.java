@@ -71,7 +71,7 @@ class ClickEventConsumer {
             }
 
         }, () -> {
-            // This happens if the click event arrives before the link creation event has been processed.
+            // This happens if the click event arrives before the link creation event has been processed
             log.warn("Received click for unknown or inactive short_url '{}'. Dropping event.", event.getShortUrl());
         });
     }
