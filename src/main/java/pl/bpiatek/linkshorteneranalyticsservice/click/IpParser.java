@@ -30,10 +30,10 @@ class IpParser {
                 var cityResponse = cityReader.city(ip);
 
                 if (cityResponse != null) {
-                    if (cityResponse.getCountry() != null) {
+                    if (cityResponse.getCountry() != null && cityResponse.getCountry().getIsoCode() != null) {
                         countryCode = cityResponse.getCountry().getIsoCode();
                     }
-                    if (cityResponse.getCity().getName() != null) {
+                    if (cityResponse.getCity() != null && cityResponse.getCity().getName() != null) {
                         cityName = cityResponse.getCity().getName();
                     }
                     if (cityResponse.getTraits() != null && cityResponse.getTraits().getAutonomousSystemOrganization() != null) {

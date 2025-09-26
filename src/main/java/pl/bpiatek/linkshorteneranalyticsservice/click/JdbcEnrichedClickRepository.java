@@ -1,5 +1,7 @@
 package pl.bpiatek.linkshorteneranalyticsservice.click;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 
@@ -7,6 +9,8 @@ import java.sql.Timestamp;
 import java.util.Map;
 
 class JdbcEnrichedClickRepository implements EnrichedClickRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(JdbcEnrichedClickRepository.class);
 
     private final SimpleJdbcInsert linkInsert;
 
@@ -18,6 +22,8 @@ class JdbcEnrichedClickRepository implements EnrichedClickRepository {
 
     @Override
     public EnrichedClick save(EnrichedClick enrichedClick) {
+
+        log.debug("Saving enriched event: {}", enrichedClick);
 
         Map<String, Object> params = Map.ofEntries(
                 Map.entry("click_id", enrichedClick.clickId()),
@@ -34,6 +40,8 @@ class JdbcEnrichedClickRepository implements EnrichedClickRepository {
                 Map.entry("os_name", enrichedClick.osName()),
                 Map.entry("browser_name", enrichedClick.browserName())
         );
+
+        log.debug("Save enriched event params: {}", params);
 
         var key = linkInsert.executeAndReturnKey(params);
 

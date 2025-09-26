@@ -36,6 +36,7 @@ class ClickEventConsumer {
         analyticsLinkRepository.findByShortUrl(event.getShortUrl())
                 .ifPresentOrElse(linkInfo -> {
 
+                    log.debug("Event clicked at: {}", event.getClickedAt());
             var signature = event.getShortUrl()
                     + event.getIpAddress()
                     + event.getUserAgent()
