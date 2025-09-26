@@ -24,7 +24,6 @@ class JdbcEnrichedClickRepository implements EnrichedClickRepository {
     public EnrichedClick save(EnrichedClick enrichedClick) {
 
         log.debug("Saving enriched event: {}", enrichedClick);
-
         Map<String, Object> params = Map.ofEntries(
                 Map.entry("click_id", enrichedClick.clickId()),
                 Map.entry("link_id", enrichedClick.linkId()),
@@ -40,8 +39,6 @@ class JdbcEnrichedClickRepository implements EnrichedClickRepository {
                 Map.entry("os_name", enrichedClick.osName()),
                 Map.entry("browser_name", enrichedClick.browserName())
         );
-
-        log.debug("Save enriched event params: {}", params);
 
         var key = linkInsert.executeAndReturnKey(params);
 

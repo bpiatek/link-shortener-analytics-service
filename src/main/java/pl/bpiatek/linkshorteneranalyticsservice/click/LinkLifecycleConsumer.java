@@ -42,7 +42,7 @@ class LinkLifecycleConsumer {
                 event.getShortUrl(),
                 event.getLinkId(),
                 event.getUserId(),
-                true
+                event.getIsActive()
         );
         repository.save(link);
     }

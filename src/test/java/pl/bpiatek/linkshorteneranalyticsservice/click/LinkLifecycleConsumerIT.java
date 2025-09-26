@@ -74,6 +74,7 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
                 .setLongUrl(longUrl)
                 .setUserId(userId)
                 .setLinkId(linkId)
+                .setIsActive(true)
                 .setCreatedAt(Timestamps.fromMillis(now.toEpochMilli()))
                 .build();
 

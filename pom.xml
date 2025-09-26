@@ -31,11 +31,10 @@
         <spring-boot-admin.version>3.5.2</spring-boot-admin.version>
         <spring-cloud.version>2025.0.0</spring-cloud.version>
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
-        <link-shortener-contracts.version>0.0.4</link-shortener-contracts.version>
+        <link-shortener-contracts.version>0.0.5</link-shortener-contracts.version>
         <confluent.version>8.0.0</confluent.version>
         <yauaa.version>7.31.0</yauaa.version>
         <geoip2.version>4.4.0</geoip2.version>
-        <protobuf-java-util.version>4.32.1</protobuf-java-util.version>
     </properties>
 
     <dependencies>
@@ -115,12 +114,6 @@
             <artifactId>kafka-schema-registry-client</artifactId>
             <version>${confluent.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java-util</artifactId>
-            <version>${protobuf-java-util.version}</version>
-        </dependency>
-
 
         <!-- Database -->
         <dependency>
