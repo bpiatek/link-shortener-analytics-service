@@ -10,6 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import pl.bpiatek.contracts.link.LinkClickEventProto.LinkClickEvent;
+import pl.bpiatek.linkshorteneranalyticsservice.config.WithKafkaTestProducers;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ import static org.awaitility.Awaitility.await;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@WithKafkaTestProducers
 class ClickEventConsumerIT implements WithFullInfrastructure {
 
     @Autowired

@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import pl.bpiatek.linkshorteneranalyticsservice.config.ClockConfiguration;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @JdbcTest
-@Import({ClickFixtures.class, JdbcEnrichedClickRepository.class})
+@Import({ClickFixtures.class, JdbcEnrichedClickRepository.class, ClockConfiguration.class})
 @ActiveProfiles("test")
 class JdbcEnrichedClickRepositoryTest implements WithPostgres {
 

@@ -2,6 +2,7 @@ package pl.bpiatek.linkshorteneranalyticsservice.click;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import pl.bpiatek.contracts.link.LinkClickEventProto.LinkClickEvent;
@@ -18,11 +19,15 @@ class ClickEventConsumer {
     private final EnricherService enricherService;
     private final EnrichedClickRepository repository;
     private final AnalyticsLinkRepository analyticsLinkRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    ClickEventConsumer(EnricherService enricherService, EnrichedClickRepository repository, AnalyticsLinkRepository analyticsLinkRepository) {
+    ClickEventConsumer(EnricherService enricherService, EnrichedClickRepository repository,
+                       AnalyticsLinkRepository analyticsLinkRepository,
+                       ApplicationEventPublisher eventPublisher) {
         this.enricherService = enricherService;
         this.repository = repository;
         this.analyticsLinkRepository = analyticsLinkRepository;
+        this.eventPublisher = eventPublisher;
     }
 
 
@@ -64,9 +69,8 @@ class ClickEventConsumer {
 
             try {
                 var enrichedToSend = repository.save(enrichedClick);
+                eventPublisher.publishEvent(new ClickEnrichedApplicationEvent(enrichedToSend));
                 log.info("Successfully saved enriched click data for click_id: {}", clickId);
-//                enrichedEventProducer.send(enrichedToSend);
-
             } catch (DataIntegrityViolationException e) {
                 log.warn("Duplicate click event detected and ignored for click_id: {}", clickId);
             }

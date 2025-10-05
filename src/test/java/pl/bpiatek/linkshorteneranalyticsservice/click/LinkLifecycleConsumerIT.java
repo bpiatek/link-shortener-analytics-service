@@ -16,6 +16,7 @@ import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkCreated;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkDeleted;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkUpdated;
+import pl.bpiatek.linkshorteneranalyticsservice.config.WithKafkaTestProducers;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -31,6 +32,7 @@ import static pl.bpiatek.linkshorteneranalyticsservice.click.TestAnalyticsLink.b
 
 @SpringBootTest
 @ActiveProfiles("test")
+@WithKafkaTestProducers
 class LinkLifecycleConsumerIT implements WithFullInfrastructure {
 
     @Autowired

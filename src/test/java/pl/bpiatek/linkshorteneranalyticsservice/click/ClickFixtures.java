@@ -1,21 +1,73 @@
 package pl.bpiatek.linkshorteneranalyticsservice.click;
 
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.util.List;
+import java.sql.Timestamp;
+import java.time.Clock;
 import java.util.Map;
 
 @Component
 @ActiveProfiles("test")
-class ClickFixtures {
+public class ClickFixtures {
 
     private final NamedParameterJdbcTemplate namedJdbcTemplate;
+    private final SimpleJdbcInsert clickInsert;
+    private final SimpleJdbcInsert analyticsLinkInsert;
+    private final Clock clock;
 
-    ClickFixtures(NamedParameterJdbcTemplate namedJdbcTemplate) {
+    ClickFixtures(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock) {
         this.namedJdbcTemplate = namedJdbcTemplate;
+        this.clickInsert = new SimpleJdbcInsert(namedJdbcTemplate.getJdbcTemplate())
+                .withTableName("clicks")
+                .usingGeneratedKeyColumns("id");
+        this.analyticsLinkInsert = new SimpleJdbcInsert(namedJdbcTemplate.getJdbcTemplate())
+                .withTableName("analytics_links");
+        this.clock = clock;
+    }
+
+    AnalyticsLink anAnalyticsLink(AnalyticsLink analyticsLink) {
+        var params = new MapSqlParameterSource()
+                .addValue("short_url", analyticsLink.shortUrl)
+                .addValue("link_id", analyticsLink.linkId)
+                .addValue("user_id", analyticsLink.userId)
+                .addValue("is_active", true)
+                .addValue("created_at", Timestamp.from(clock.instant()))
+                .addValue("updated_at", Timestamp.from(clock.instant()));
+
+        analyticsLinkInsert.execute(params);
+
+        return  analyticsLink;
+    }
+
+    public record AnalyticsLink(String shortUrl, String linkId, String userId) {}
+
+    EnrichedClick aClick(EnrichedClick click) {
+        var now = clock.instant();
+
+        var params = new MapSqlParameterSource()
+                .addValue("click_id", click.clickId())
+                .addValue("link_id", click.linkId())
+                .addValue("user_id", click.userId())
+                .addValue("short_url", click.shortUrl())
+                .addValue("clicked_at", Timestamp.from(click.clickedAt()))
+                .addValue("ip_address", click.ipAddress())
+                .addValue("country_code", click.countryCode())
+                .addValue("city_name", click.cityName())
+                .addValue("asn", click.asn())
+                .addValue("user_agent", click.userAgent())
+                .addValue("device_type", click.deviceType())
+                .addValue("os_name", click.osName())
+                .addValue("browser_name", click.browserName())
+                .addValue("created_at", Timestamp.from(now))
+                .addValue("updated_at", Timestamp.from(now));
+
+        var id = clickInsert.executeAndReturnKey(params).longValue();
+        return click.withId(id);
     }
 
     EnrichedClick getClickById(Long id) {

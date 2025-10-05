@@ -1,8 +1,12 @@
 package pl.bpiatek.linkshorteneranalyticsservice.click;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
+import pl.bpiatek.contracts.analytics.AnalyticsEventProto.LinkClickEnrichedEvent;
 
 import java.time.Clock;
 
@@ -13,8 +17,12 @@ class ClickConfig {
     ClickEventConsumer clickEventConsumer(
             EnricherService enricherService,
             EnrichedClickRepository enrichedClickRepository,
-            AnalyticsLinkRepository analyticsLinkRepository) {
-        return new ClickEventConsumer(enricherService, enrichedClickRepository, analyticsLinkRepository);
+            AnalyticsLinkRepository analyticsLinkRepository,
+            ApplicationEventPublisher applicationEventPublisher) {
+        return new ClickEventConsumer(enricherService,
+                enrichedClickRepository,
+                analyticsLinkRepository,
+                applicationEventPublisher);
     }
 
     @Bean
@@ -35,5 +43,17 @@ class ClickConfig {
     @Bean
     LinkLifecycleConsumer linkLifecycleConsumer(AnalyticsLinkRepository repository) {
         return new LinkLifecycleConsumer(repository);
+    }
+
+    @Bean
+    EnrichedClickEventProducer enrichedClickEventProducer(
+            KafkaTemplate<String, LinkClickEnrichedEvent> kafkaTemplate,
+            @Value("${topic.analytics.enriched}") String topicName) {
+        return new EnrichedClickEventProducer(kafkaTemplate, topicName);
+    }
+
+    @Bean
+    KafkaIntegrationEvents kafkaIntegrationEvents(EnrichedClickEventProducer enrichedClickEventProducer) {
+        return new KafkaIntegrationEvents(enrichedClickEventProducer);
     }
 }
