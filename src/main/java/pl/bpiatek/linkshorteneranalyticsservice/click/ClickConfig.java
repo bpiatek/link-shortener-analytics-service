@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import pl.bpiatek.contracts.analytics.AnalyticsEventProto.LinkClickEnrichedEvent;
+import pl.bpiatek.linkshorteneranalyticsservice.enricher.EnricherService;
 
 import java.time.Clock;
 
@@ -33,11 +34,6 @@ class ClickConfig {
     @Bean
     AnalyticsLinkRepository jdbcAnalyticsLinkRepository(JdbcTemplate jdbcTemplate, Clock clock) {
         return new JdbcAnalyticsLinkRepository(jdbcTemplate, clock);
-    }
-
-    @Bean
-    EnricherService enricherService(UserAgentParser userAgentParser, IpParser ipParser) {
-        return new EnricherService(userAgentParser, ipParser);
     }
 
     @Bean

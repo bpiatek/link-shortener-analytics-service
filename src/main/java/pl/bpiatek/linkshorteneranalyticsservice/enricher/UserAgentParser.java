@@ -1,4 +1,4 @@
-package pl.bpiatek.linkshorteneranalyticsservice.click;
+package pl.bpiatek.linkshorteneranalyticsservice.enricher;
 
 import nl.basjes.parse.useragent.UserAgent;
 import nl.basjes.parse.useragent.UserAgentAnalyzer;

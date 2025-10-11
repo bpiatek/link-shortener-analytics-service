@@ -6,6 +6,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import pl.bpiatek.contracts.link.LinkClickEventProto.LinkClickEvent;
+import pl.bpiatek.linkshorteneranalyticsservice.enricher.EnricherService;
 
 import java.time.Instant;
 import java.util.UUID;

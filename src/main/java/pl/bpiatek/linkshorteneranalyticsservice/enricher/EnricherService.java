@@ -1,7 +1,8 @@
-package pl.bpiatek.linkshorteneranalyticsservice.click;
+package pl.bpiatek.linkshorteneranalyticsservice.enricher;
 
 
-class EnricherService {
+
+public class EnricherService {
 
     private final UserAgentParser userAgentParser;
     private final IpParser ipParser;
@@ -11,7 +12,7 @@ class EnricherService {
         this.ipParser = ipParser;
     }
 
-    EnrichedData enrich(String ipAddress, String userAgent) {
+    public EnrichedData enrich(String ipAddress, String userAgent) {
         var geoInfo = ipParser.parse(ipAddress);
         var parsedUserAgent = userAgentParser.parse(userAgent);
 

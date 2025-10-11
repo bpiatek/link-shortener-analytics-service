@@ -1,4 +1,4 @@
-package pl.bpiatek.linkshorteneranalyticsservice.click;
+package pl.bpiatek.linkshorteneranalyticsservice.enricher;
 
 import com.maxmind.geoip2.DatabaseReader;
 import org.junit.jupiter.api.BeforeAll;

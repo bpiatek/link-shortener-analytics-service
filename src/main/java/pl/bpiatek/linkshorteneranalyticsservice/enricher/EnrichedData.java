@@ -1,6 +1,6 @@
-package pl.bpiatek.linkshorteneranalyticsservice.click;
+package pl.bpiatek.linkshorteneranalyticsservice.enricher;
 
-record EnrichedData(
+public record EnrichedData(
         String countryCode,
         String cityName,
         String asn,

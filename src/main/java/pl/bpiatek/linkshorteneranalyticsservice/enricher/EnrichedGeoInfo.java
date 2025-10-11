@@ -1,4 +1,4 @@
-package pl.bpiatek.linkshorteneranalyticsservice.click;
+package pl.bpiatek.linkshorteneranalyticsservice.enricher;
 
 record EnrichedGeoInfo(
         String city,
