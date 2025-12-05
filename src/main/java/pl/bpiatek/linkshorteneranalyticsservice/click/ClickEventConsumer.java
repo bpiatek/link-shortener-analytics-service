@@ -43,7 +43,7 @@ class ClickEventConsumer {
                 .ifPresentOrElse(linkInfo -> {
                     constructAndPublishEvent(event, linkInfo);
                 }, () -> {
-                    throw new LinkNotFoundRetryableException(STR."Link info not found yet for \{event.getShortUrl()}");
+                    throw new LinkNotFoundRetryableException("Link info not found yet for shortUrl "  + event.getShortUrl());
                 });
     }
 
