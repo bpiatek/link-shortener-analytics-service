@@ -49,7 +49,7 @@ class ClickConfig {
     }
 
     @Bean
-    KafkaIntegrationEvents kafkaIntegrationEvents(EnrichedClickEventProducer enrichedClickEventProducer) {
-        return new KafkaIntegrationEvents(enrichedClickEventProducer);
+    EnrichedClickPublisher kafkaIntegrationEvents(EnrichedClickEventProducer enrichedClickEventProducer) {
+        return new EnrichedClickPublisher(enrichedClickEventProducer);
     }
 }

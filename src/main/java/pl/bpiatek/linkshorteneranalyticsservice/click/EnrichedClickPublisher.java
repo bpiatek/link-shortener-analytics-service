@@ -3,11 +3,11 @@ package pl.bpiatek.linkshorteneranalyticsservice.click;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 
-class KafkaIntegrationEvents {
+class EnrichedClickPublisher {
 
     private final EnrichedClickEventProducer enrichedClickEventProducer;
 
-    KafkaIntegrationEvents(EnrichedClickEventProducer enrichedClickEventProducer) {
+    EnrichedClickPublisher(EnrichedClickEventProducer enrichedClickEventProducer) {
         this.enrichedClickEventProducer = enrichedClickEventProducer;
     }
 
