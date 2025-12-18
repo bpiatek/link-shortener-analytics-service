@@ -23,6 +23,8 @@ class IpParser {
         var countryCode = UNKNOWN;
         var cityName = UNKNOWN;
         var asnOrganization = UNKNOWN;
+        var longitude = UNKNOWN;
+        var latitude = UNKNOWN;
 
         if (ipAddress != null && !ipAddress.isBlank()) {
             try {
@@ -36,6 +38,10 @@ class IpParser {
                     if (cityResponse.getCity() != null && cityResponse.getCity().getName() != null) {
                         cityName = cityResponse.getCity().getName();
                     }
+                    if (cityResponse.getCity() != null && cityResponse.getLocation() != null) {
+                        longitude = String.valueOf(cityResponse.getLocation().getLongitude());
+                        latitude = String.valueOf(cityResponse.getLocation().getLatitude());
+                    }
                     if (cityResponse.getTraits() != null && cityResponse.getTraits().getAutonomousSystemOrganization() != null) {
                         asnOrganization = cityResponse.getTraits().getAutonomousSystemOrganization();
                     }
@@ -44,6 +50,6 @@ class IpParser {
                 log.warn("Failed to enrich IP address '{}': {}", ipAddress, e.getMessage());
             }
         }
-        return new EnrichedGeoInfo(cityName, countryCode, asnOrganization);
+        return new EnrichedGeoInfo(cityName, latitude, longitude, countryCode, asnOrganization);
     }
 }

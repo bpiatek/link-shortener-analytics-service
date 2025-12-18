@@ -37,6 +37,8 @@ class EnrichedClickEventProducer {
                         .setNanos(click.clickedAt().getNano())
                         .build())
                 .setCityName(click.cityName())
+                .setCityLatitude(click.cityLatitude())
+                .setCityLongitude(click.cityLongitude())
                 .setCountryCode(click.countryCode())
                 .setDeviceType(click.deviceType())
                 .setOsName(click.osName())

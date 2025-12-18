@@ -68,6 +68,8 @@ class ClickEventConsumer {
                 event.getUserAgent(),
                 enrichedData.countryCode(),
                 enrichedData.cityName(),
+                enrichedData.cityLatitude(),
+                enrichedData.cityLongitude(),
                 enrichedData.asn(),
                 enrichedData.deviceType(),
                 enrichedData.osName(),

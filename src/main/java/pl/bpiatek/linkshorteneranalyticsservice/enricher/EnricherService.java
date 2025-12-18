@@ -19,6 +19,8 @@ public class EnricherService {
         return new EnrichedData(
                 geoInfo.country(),
                 geoInfo.city(),
+                geoInfo.cityLatitude(),
+                geoInfo.cityLongitude(),
                 geoInfo.asnOrganization(),
                 parsedUserAgent.deviceType(),
                 parsedUserAgent.os(),

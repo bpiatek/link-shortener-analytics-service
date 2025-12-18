@@ -15,6 +15,8 @@ record EnrichedClick(
 
         String countryCode,
         String cityName,
+        String cityLatitude,
+        String cityLongitude,
         String asn,
 
         String deviceType,
@@ -22,6 +24,6 @@ record EnrichedClick(
         String browserName
 ) {
     EnrichedClick withId(Long id) {
-        return new EnrichedClick(id, clickId, linkId, userId, shortUrl, clickedAt, ipAddress, userAgent, countryCode, cityName, asn, deviceType, osName, browserName);
+        return new EnrichedClick(id, clickId, linkId, userId, shortUrl, clickedAt, ipAddress, userAgent, countryCode, cityName, cityLatitude, cityLongitude, asn, deviceType, osName, browserName);
     }
 }

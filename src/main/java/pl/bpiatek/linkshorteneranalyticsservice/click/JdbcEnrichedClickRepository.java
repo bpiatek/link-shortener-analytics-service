@@ -33,6 +33,8 @@ class JdbcEnrichedClickRepository implements EnrichedClickRepository {
                 Map.entry("ip_address", enrichedClick.ipAddress()),
                 Map.entry("country_code", enrichedClick.countryCode()),
                 Map.entry("city_name", enrichedClick.cityName()),
+                Map.entry("city_latitude", enrichedClick.cityLatitude()),
+                Map.entry("city_longitude", enrichedClick.cityLongitude()),
                 Map.entry("asn", enrichedClick.asn()),
                 Map.entry("user_agent", enrichedClick.userAgent()),
                 Map.entry("device_type", enrichedClick.deviceType()),

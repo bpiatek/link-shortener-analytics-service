@@ -50,6 +50,8 @@ class JdbcEnrichedClickRepositoryTest implements WithPostgres {
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15\n (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
                 "GB",
                 "London",
+                "",
+                "",
                 "Unknown",
                 "Desktop",
                 "Mac OS",

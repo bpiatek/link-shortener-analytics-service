@@ -58,6 +58,8 @@ public class ClickFixtures {
                 .addValue("ip_address", click.ipAddress())
                 .addValue("country_code", click.countryCode())
                 .addValue("city_name", click.cityName())
+                .addValue("city_latitude", click.cityLatitude())
+                .addValue("city_longitude", click.cityLongitude())
                 .addValue("asn", click.asn())
                 .addValue("user_agent", click.userAgent())
                 .addValue("device_type", click.deviceType())
@@ -74,7 +76,7 @@ public class ClickFixtures {
         var sql = """
                 SELECT c.id, c.click_id, c.link_id, c.user_id, c.link_short_url,
                     c.clicked_at, c.ip_address, c.country_code, c.city_name, c.asn, c.user_agent,
-                    c.device_type, c.os_name, c.browser_name
+                    c.device_type, c.os_name, c.browser_name, c.city_latitude, c.city_longitude
                 FROM clicks c
                 WHERE c.id = :id""";
 
@@ -87,7 +89,7 @@ public class ClickFixtures {
         var sql = """
                 SELECT c.id, c.click_id, c.link_id, c.user_id, c.link_short_url,
                     c.clicked_at, c.ip_address, c.country_code, c.city_name, c.asn, c.user_agent,
-                    c.device_type, c.os_name, c.browser_name
+                    c.device_type, c.os_name, c.browser_name, c.city_latitude, c.city_longitude
                 FROM clicks c
                 WHERE c.link_short_url = :shortUrl""";
 
@@ -107,6 +109,8 @@ public class ClickFixtures {
             rs.getString("user_agent"),
             rs.getString("country_code"),
             rs.getString("city_name"),
+            rs.getString("city_latitude"),
+            rs.getString("city_longitude"),
             rs.getString("asn"),
             rs.getString("device_type"),
             rs.getString("os_name"),
