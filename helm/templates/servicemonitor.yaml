@@ -9,6 +9,8 @@ spec:
     matchLabels:
       app: {{ .Release.Name }}-{{ .Chart.Name }}
   endpoints:
-    - port: http-metrics
-      path: '/actuator/prometheus'
-      interval: 15s
+      - port: http-metrics
+        path: '/actuator/prometheus'
+        interval: 30s
+        scrapeTimeout: 25s
+        honorLabels: true

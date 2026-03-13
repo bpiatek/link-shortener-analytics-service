@@ -31,9 +31,10 @@ class JdbcAnalyticsLinkRepository implements AnalyticsLinkRepository {
     @Override
     public Optional<AnalyticsLink> findByShortUrl(String shortUrl) {
         final String sql = """
-           SELECT al.short_url, al.link_id, al.user_id, al.is_active
+                SELECT al.short_url, al.link_id, al.user_id, al.is_active
                 FROM analytics_links al
-                WHERE al.short_url = :shortUrl""";
+                WHERE al.short_url = :shortUrl
+                """;
 
         var results = namedJdbcTemplate.query(
                 sql,
@@ -47,13 +48,19 @@ class JdbcAnalyticsLinkRepository implements AnalyticsLinkRepository {
     @Override
     public void save(AnalyticsLink link) {
         var now = Timestamp.from(clock.instant());
+
+        // STRICT RULE: Always use EXCLUDED in Postgres upserts to ensure
+        // full payload synchronization during Kafka topic replays.
         final String sql = """
-            INSERT INTO analytics_links (short_url, link_id, user_id, is_active, created_at, updated_at, deleted_at)
-            VALUES (:shortUrl, :linkId, :userId, :isActive, :now, :now, NULL)
-            ON CONFLICT (short_url) DO UPDATE SET
-                deleted_at = NULL,
-                updated_at = :now
-            """;
+                INSERT INTO analytics_links (short_url, link_id, user_id, is_active, created_at, updated_at, deleted_at)
+                VALUES (:shortUrl, :linkId, :userId, :isActive, :now, :now, NULL)
+                ON CONFLICT (short_url) DO UPDATE SET
+                    link_id = EXCLUDED.link_id,
+                    user_id = EXCLUDED.user_id,
+                    is_active = EXCLUDED.is_active,
+                    updated_at = EXCLUDED.updated_at,
+                    deleted_at = EXCLUDED.deleted_at
+                """;
 
         namedJdbcTemplate.update(
                 sql,
@@ -70,21 +77,26 @@ class JdbcAnalyticsLinkRepository implements AnalyticsLinkRepository {
     public void markAsDeleted(String shortUrl, Instant deletedAt) {
         var now = Timestamp.from(clock.instant());
         var sql = """
-            UPDATE analytics_links
-            SET deleted_at = :deleted_at, updated_at = :now
-            WHERE short_url = :shortUrl
-            """;
+                UPDATE analytics_links
+                SET deleted_at = :deletedAt, updated_at = :now
+                WHERE short_url = :shortUrl
+                """;
 
-        namedJdbcTemplate.update(sql, Map.of("shortUrl", shortUrl, "now", now, "deleted_at", Timestamp.from(deletedAt)));
+        namedJdbcTemplate.update(sql, Map.of(
+                "shortUrl", shortUrl,
+                "now", now,
+                "deletedAt", Timestamp.from(deletedAt)
+        ));
     }
 
     @Override
     public void updateStatus(String shortUrl, boolean isActive) {
         var now = Timestamp.from(clock.instant());
         final String sql = """
-            UPDATE analytics_links
-            SET is_active = :isActive, updated_at = :now
-            WHERE short_url = :shortUrl""";
+                UPDATE analytics_links
+                SET is_active = :isActive, updated_at = :now
+                WHERE short_url = :shortUrl
+                """;
 
         namedJdbcTemplate.update(sql,
                 new MapSqlParameterSource()

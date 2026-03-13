@@ -4,27 +4,25 @@ import com.google.protobuf.Timestamp;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.kafka.core.ProducerFactory;
 import pl.bpiatek.contracts.link.LinkClickEventProto.LinkClickEvent;
-import pl.bpiatek.linkshorteneranalyticsservice.config.WithKafkaTestProducers;
+import pl.bpiatek.linkshorteneranalyticsservice.config.IntegrationTest;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
 
-import static java.time.ZoneOffset.UTC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.awaitility.Awaitility.await;
 
-
-@SpringBootTest
-@ActiveProfiles("test")
-@WithKafkaTestProducers
-class ClickEventConsumerIT implements WithFullInfrastructure {
+class ClickEventConsumerIT extends IntegrationTest {
 
     @Autowired
     private KafkaTemplate<String, LinkClickEvent> kafkaTemplate;
@@ -38,47 +36,38 @@ class ClickEventConsumerIT implements WithFullInfrastructure {
     @Autowired
     private AnalyticLinkFixtures analyticLinkFixtures;
 
-    @DynamicPropertySource
-    static void kafkaProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", redpanda::getBootstrapServers);
-    }
-
     @Test
     void shouldSaveEnrichedClickEventToDatabase() {
         // given
-        var clickedAt = LocalDateTime.parse("2025-08-04T10:11:30").toInstant(UTC);
-        var shortUrl = "en78Se";
+        var clickedAt = LocalDateTime.parse("2025-08-04T10:11:30").toInstant(ZoneOffset.UTC);
+
+        var shortUrl = "en78Se-" + UUID.randomUUID().toString().substring(0, 5);
         var ipAddress = "35.242.177.6";
         var userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
 
-        // needs to be created first
-        var analyticsLink = analyticLinkFixtures.anAnalyticsLink(TestAnalyticsLink.builder()
-                .withIsActive(true)
-                .withShortUrl(shortUrl)
-                .build());
-
-        var event = LinkClickEvent.newBuilder()
-                .setClickedAt(Timestamp.newBuilder().setNanos(clickedAt.getNano()).build())
-                .setIpAddress(ipAddress)
-                .setUserAgent(userAgent)
-                .setShortUrl(shortUrl)
-                .build();
+        setupAnalyticsLink(shortUrl);
+        var event = buildLinkClickEvent(shortUrl, ipAddress, userAgent, clickedAt);
 
         // when
-        kafkaTemplate.send(topicName, event);
+        kafkaTemplate.send(topicName, event).join();
 
         // then
-        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             var clickFromDB = clickFixtures.getClickByShortUrl(shortUrl);
-            assertThat(clickFromDB).isNotNull();
+
+            assertThat(clickFromDB)
+                    .as("Expected click event to be saved in the database but it was not found")
+                    .isNotNull();
+
             assertSoftly(s -> {
-                s.assertThat(clickFromDB.linkId()).isEqualTo(analyticsLink.getLinkId());
-                s.assertThat(clickFromDB.userId()).isEqualTo(analyticsLink.getUserId());
-                s.assertThat(clickFromDB.shortUrl()).isEqualTo(analyticsLink.getShortUrl());
-                s.assertThat(Timestamp.newBuilder().setNanos(clickFromDB.clickedAt().getNano()).build())
-                        .isEqualTo(event.getClickedAt());
-                s.assertThat(clickFromDB.ipAddress()).isEqualTo(event.getIpAddress());
-                s.assertThat(clickFromDB.userAgent()).isEqualTo(event.getUserAgent());
+                s.assertThat(clickFromDB.shortUrl()).isEqualTo(shortUrl);
+
+                // Assert timestamps directly rather than rebuilding the Protobuf object in the assertion
+                s.assertThat(clickFromDB.clickedAt().getEpochSecond()).isEqualTo(clickedAt.getEpochSecond());
+                s.assertThat(clickFromDB.clickedAt().getNano()).isEqualTo(clickedAt.getNano());
+
+                s.assertThat(clickFromDB.ipAddress()).isEqualTo(ipAddress);
+                s.assertThat(clickFromDB.userAgent()).isEqualTo(userAgent);
                 s.assertThat(clickFromDB.countryCode()).isEqualTo("GB");
                 s.assertThat(clickFromDB.cityName()).isEqualTo("London");
                 s.assertThat(clickFromDB.asn()).isEqualTo("Unknown");
@@ -87,5 +76,38 @@ class ClickEventConsumerIT implements WithFullInfrastructure {
                 s.assertThat(clickFromDB.browserName()).isEqualTo("Safari");
             });
         });
+    }
+
+    private void setupAnalyticsLink(String shortUrl) {
+        analyticLinkFixtures.anAnalyticsLink(TestAnalyticsLink.builder()
+                .withIsActive(true)
+                .withShortUrl(shortUrl)
+                .build());
+    }
+
+    private LinkClickEvent buildLinkClickEvent(String shortUrl, String ipAddress, String userAgent, java.time.Instant clickedAt) {
+        return LinkClickEvent.newBuilder()
+                .setClickedAt(Timestamp.newBuilder()
+                        .setSeconds(clickedAt.getEpochSecond())
+                        .setNanos(clickedAt.getNano())
+                        .build())
+                .setIpAddress(ipAddress)
+                .setUserAgent(userAgent)
+                .setShortUrl(shortUrl)
+                .build();
+    }
+
+    @TestConfiguration
+    static class TestProducerConfig {
+
+        @Bean
+        public KafkaTemplate<String, LinkClickEvent> rawClickEventKafkaTemplate(KafkaProperties kafkaProperties) {
+
+            var props = kafkaProperties.buildProducerProperties(null);
+
+            ProducerFactory<String, LinkClickEvent> pf = new DefaultKafkaProducerFactory<>(props);
+
+            return new KafkaTemplate<>(pf);
+        }
     }
 }

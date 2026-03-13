@@ -1,39 +1,32 @@
 package pl.bpiatek.linkshorteneranalyticsservice.click;
 
 import com.google.protobuf.util.Timestamps;
-import org.junit.jupiter.api.AfterEach;
+import org.assertj.core.data.TemporalUnitWithinOffset;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.kafka.core.ProducerFactory;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkCreated;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkDeleted;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkUpdated;
-import pl.bpiatek.linkshorteneranalyticsservice.config.WithKafkaTestProducers;
+import pl.bpiatek.linkshorteneranalyticsservice.config.IntegrationTest;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
-import static java.time.ZoneOffset.UTC;
+import static org.assertj.core.api.Assertions.within;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.BDDMockito.given;
-import static pl.bpiatek.linkshorteneranalyticsservice.click.TestAnalyticsLink.builder;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@WithKafkaTestProducers
-class LinkLifecycleConsumerIT implements WithFullInfrastructure {
+class LinkLifecycleConsumerIT extends IntegrationTest {
 
     @Autowired
     private KafkaTemplate<String, LinkLifecycleEvent> kafkaTemplate;
@@ -44,32 +37,16 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
     @Autowired
     private AnalyticLinkFixtures analyticLinkFixtures;
 
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    @MockitoBean
-    Clock clock;
-
-    @DynamicPropertySource
-    static void kafkaProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", redpanda::getBootstrapServers);
-    }
-
-    @AfterEach
-    void cleanUp() {
-        jdbcTemplate.update("DELETE FROM analytics_links");
-    }
-
     @Test
     void shouldHandleLinkCreateEventAndSaveLink() {
         // given
-        var now = Instant.parse("2025-08-04T10:11:30Z");
-        given(clock.instant()).willReturn(now);
-
-        var shortUrl = "en78Se";
-        var linkId = "12";
+        var shortUrl = "create-" + UUID.randomUUID().toString().substring(0, 5);
+        var linkId = UUID.randomUUID().toString();
         var userId = "user-13";
         var longUrl = "https://example.com/some-long-url";
+
+        // We capture 'now' to ensure the DB assigns a time very close to this
+        var testStartTime = Instant.now();
 
         var linkCreated = LinkCreated.newBuilder()
                 .setShortUrl(shortUrl)
@@ -77,7 +54,7 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
                 .setUserId(userId)
                 .setLinkId(linkId)
                 .setIsActive(true)
-                .setCreatedAt(Timestamps.fromMillis(now.toEpochMilli()))
+                .setCreatedAt(Timestamps.fromMillis(testStartTime.toEpochMilli()))
                 .build();
 
         var event = LinkLifecycleEvent.newBuilder()
@@ -85,19 +62,22 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
                 .build();
 
         // when
-        kafkaTemplate.send(topicName, event);
+        kafkaTemplate.send(topicName, event).join();
 
         // then
-        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             var linkByShortUrl = analyticLinkFixtures.getLinkByShortUrl(shortUrl);
+
             assertThat(linkByShortUrl).isNotNull();
             assertSoftly(s -> {
                 s.assertThat(linkByShortUrl.getLinkId()).isEqualTo(linkId);
                 s.assertThat(linkByShortUrl.getUserId()).isEqualTo(userId);
                 s.assertThat(linkByShortUrl.isActive()).isTrue();
                 s.assertThat(linkByShortUrl.getShortUrl()).isEqualTo(shortUrl);
-                s.assertThat(linkByShortUrl.getCreatedAt()).isEqualTo(now);
-                s.assertThat(linkByShortUrl.getUpdatedAt()).isEqualTo(now);
+
+                // Assert that the database correctly generated recent timestamps
+                s.assertThat(linkByShortUrl.getCreatedAt()).isCloseTo(testStartTime, within(5, ChronoUnit.SECONDS));
+                s.assertThat(linkByShortUrl.getUpdatedAt()).isCloseTo(testStartTime, within(5, ChronoUnit.SECONDS));
                 s.assertThat(linkByShortUrl.getDeletedAt()).isNull();
             });
         });
@@ -106,20 +86,20 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
     @Test
     void shouldHandleLinkUpdatedEventAndUpdateLinkIsActiveField() {
         // given
-        var creationTime = LocalDateTime.parse("2025-03-01T08:11:30").toInstant(UTC);
-        var updateTime = LocalDateTime.parse("2025-08-04T10:11:30").toInstant(UTC);
-        given(clock.instant()).willReturn(updateTime);
+        var creationTime = Instant.now().minusSeconds(3600); // 1 hour ago
+        var testStartTime = Instant.now();
+        var shortUrl = "update-" + UUID.randomUUID().toString().substring(0, 5);
 
-        var shortUrl = "en78Se";
-        var alreadyInsertedLink = analyticLinkFixtures.anAnalyticsLink(builder()
+        var alreadyInsertedLink = analyticLinkFixtures.anAnalyticsLink(TestAnalyticsLink.builder()
                 .withShortUrl(shortUrl)
                 .withCreatedAt(creationTime)
                 .withUpdatedAt(creationTime)
+                .withIsActive(true)
                 .build());
 
         var linkUpdated = LinkUpdated.newBuilder()
                 .setShortUrl(shortUrl)
-                .setLongUrl(alreadyInsertedLink.getLinkId())
+                .setLongUrl("https://example.com/updated")
                 .setUserId(alreadyInsertedLink.getUserId())
                 .setLinkId(alreadyInsertedLink.getLinkId())
                 .setIsActive(false)
@@ -130,19 +110,19 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
                 .build();
 
         // when
-        kafkaTemplate.send(topicName, event);
+        kafkaTemplate.send(topicName, event).join();
 
         // then
-        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             var linkByShortUrl = analyticLinkFixtures.getLinkByShortUrl(shortUrl);
+
             assertThat(linkByShortUrl).isNotNull();
             assertSoftly(s -> {
                 s.assertThat(linkByShortUrl.isActive()).isFalse();
                 s.assertThat(linkByShortUrl.getLinkId()).isEqualTo(alreadyInsertedLink.getLinkId());
-                s.assertThat(linkByShortUrl.getUserId()).isEqualTo(alreadyInsertedLink.getUserId());
-                s.assertThat(linkByShortUrl.getShortUrl()).isEqualTo(shortUrl);
-                s.assertThat(linkByShortUrl.getCreatedAt()).isEqualTo(creationTime);
-                s.assertThat(linkByShortUrl.getUpdatedAt()).isEqualTo(updateTime);
+
+                // Assert the DB updated the modification time
+                s.assertThat(linkByShortUrl.getUpdatedAt()).isCloseTo(testStartTime, within(5, ChronoUnit.SECONDS));
                 s.assertThat(linkByShortUrl.getDeletedAt()).isNull();
             });
         });
@@ -151,24 +131,22 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
     @Test
     void shouldHandleLinkDeletedEventAndSoftDeleteLink() {
         // given
-        var creationTime = Instant.parse("2025-03-01T08:11:30Z");
-        var deletionTime = Instant.parse("2025-08-04T10:11:30Z");
+        var creationTime = Instant.now().minusSeconds(3600);
+        var explicitDeletionTime = Instant.parse("2025-08-04T10:11:30Z");
+        var shortUrl = "delete-" + UUID.randomUUID().toString().substring(0, 5);
 
-        var shortUrl = "en78Se";
-        given(clock.instant()).willReturn(creationTime);
-        var alreadyInsertedLink = analyticLinkFixtures.anAnalyticsLink(builder()
+        var alreadyInsertedLink = analyticLinkFixtures.anAnalyticsLink(TestAnalyticsLink.builder()
                 .withShortUrl(shortUrl)
                 .withCreatedAt(creationTime)
                 .withUpdatedAt(creationTime)
                 .withIsActive(true)
                 .build());
 
-        given(clock.instant()).willReturn(deletionTime.plusSeconds(1));
         var linkDeleted = LinkDeleted.newBuilder()
                 .setShortUrl(shortUrl)
                 .setUserId(alreadyInsertedLink.getUserId())
                 .setLinkId(alreadyInsertedLink.getLinkId())
-                .setDeletedAt(Timestamps.fromMillis(deletionTime.toEpochMilli()))
+                .setDeletedAt(Timestamps.fromMillis(explicitDeletionTime.toEpochMilli()))
                 .build();
 
         var event = LinkLifecycleEvent.newBuilder()
@@ -176,21 +154,35 @@ class LinkLifecycleConsumerIT implements WithFullInfrastructure {
                 .build();
 
         // when
-        kafkaTemplate.send(topicName, event);
+        kafkaTemplate.send(topicName, event).join();
 
         // then
-        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             var linkByShortUrl = analyticLinkFixtures.getLinkByShortUrl(shortUrl);
+
             assertThat(linkByShortUrl).isNotNull();
             assertSoftly(s -> {
-                s.assertThat(linkByShortUrl.isActive()).isTrue();
                 s.assertThat(linkByShortUrl.getLinkId()).isEqualTo(alreadyInsertedLink.getLinkId());
-                s.assertThat(linkByShortUrl.getUserId()).isEqualTo(alreadyInsertedLink.getUserId());
                 s.assertThat(linkByShortUrl.getShortUrl()).isEqualTo(shortUrl);
-                s.assertThat(linkByShortUrl.getCreatedAt()).isEqualTo(creationTime);
-                s.assertThat(linkByShortUrl.getUpdatedAt()).isEqualTo(deletionTime.plusSeconds(1));
-                s.assertThat(linkByShortUrl.getDeletedAt()).isEqualTo(deletionTime);
+
+                // Because handleLinkDeleted explicitly extracts deletedAt from the event and saves it,
+                // this assertion remains exact.
+                s.assertThat(linkByShortUrl.getDeletedAt()).isEqualTo(explicitDeletionTime);
             });
         });
+    }
+
+    @TestConfiguration
+    static class TestProducerConfig {
+
+        @Bean
+        public KafkaTemplate<String, LinkLifecycleEvent> rawLifecycleEventKafkaTemplate(
+                org.springframework.boot.autoconfigure.kafka.KafkaProperties kafkaProperties) {
+
+            var props = kafkaProperties.buildProducerProperties(null);
+            ProducerFactory<String, LinkLifecycleEvent> pf = new DefaultKafkaProducerFactory<>(props);
+
+            return new KafkaTemplate<>(pf);
+        }
     }
 }

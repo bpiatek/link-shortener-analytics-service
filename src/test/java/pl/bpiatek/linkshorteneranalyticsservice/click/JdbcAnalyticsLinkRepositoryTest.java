@@ -75,20 +75,23 @@ class JdbcAnalyticsLinkRepositoryTest implements WithPostgres {
         });
     }
 
+    // RENAMED AND REFACTORED to reflect correct Upsert behavior
     @Test
-    void shouldNotUpdateUserIdOrLinkIdOnSameShortUrl() {
+    void shouldUpdateUserIdAndLinkIdOnConflictToSynchronizeWithKafkaEvent() {
         // given
         var shortUrl = "en78Se";
-        var firstLink = analyticLinkFixtures.anAnalyticsLink(
+        analyticLinkFixtures.anAnalyticsLink(
                 builder()
                         .withShortUrl(shortUrl)
+                        .withLinkId("stale-link-id")
+                        .withUserId("stale-user-id")
                         .withIsActive(true)
                         .build());
 
         var linkWithSameShortUrl = new AnalyticsLink(
                 shortUrl,
-                "100",
-                "user-99",
+                "fresh-link-id",
+                "fresh-user-id",
                 true
         );
 
@@ -99,15 +102,18 @@ class JdbcAnalyticsLinkRepositoryTest implements WithPostgres {
         var linkFromDB = analyticLinkFixtures.getLinkByShortUrl(shortUrl);
         assertThat(linkFromDB).isNotNull();
         assertSoftly(s -> {
+            // Assert the EXCLUDED logic correctly overwrote the stale DB row
+            s.assertThat(linkFromDB.getLinkId()).isEqualTo("fresh-link-id");
+            s.assertThat(linkFromDB.getUserId()).isEqualTo("fresh-user-id");
+            s.assertThat(linkFromDB.getShortUrl()).isEqualTo(shortUrl);
             s.assertThat(linkFromDB.isActive()).isTrue();
-            s.assertThat(linkFromDB.getLinkId()).isEqualTo(firstLink.getLinkId());
-            s.assertThat(linkFromDB.getUserId()).isEqualTo(firstLink.getUserId());
-            s.assertThat(linkFromDB.getShortUrl()).isEqualTo(firstLink.getShortUrl());
+            s.assertThat(linkFromDB.getUpdatedAt()).isEqualTo(now);
         });
     }
 
+    // RENAMED AND REFACTORED to reflect correct Upsert behavior
     @Test
-    void shouldNotUpdateIsActiveOnSavingSameShortUrlLink() {
+    void shouldUpdateIsActiveOnConflictToSynchronizeWithKafkaEvent() {
         // given
         var shortUrl = "en78Se";
         var firstLink = analyticLinkFixtures.anAnalyticsLink(
@@ -120,7 +126,7 @@ class JdbcAnalyticsLinkRepositoryTest implements WithPostgres {
                 shortUrl,
                 firstLink.getLinkId(),
                 firstLink.getUserId(),
-                false
+                false // The incoming event says this link is now inactive
         );
 
         // when
@@ -130,10 +136,12 @@ class JdbcAnalyticsLinkRepositoryTest implements WithPostgres {
         var linkFromDB = analyticLinkFixtures.getLinkByShortUrl(shortUrl);
         assertThat(linkFromDB).isNotNull();
         assertSoftly(s -> {
-            s.assertThat(linkFromDB.isActive()).isTrue();
+            // Assert the DB synchronized the is_active state with the incoming event
+            s.assertThat(linkFromDB.isActive()).isFalse();
             s.assertThat(linkFromDB.getLinkId()).isEqualTo(firstLink.getLinkId());
             s.assertThat(linkFromDB.getUserId()).isEqualTo(firstLink.getUserId());
             s.assertThat(linkFromDB.getShortUrl()).isEqualTo(firstLink.getShortUrl());
+            s.assertThat(linkFromDB.getUpdatedAt()).isEqualTo(now);
         });
     }
 

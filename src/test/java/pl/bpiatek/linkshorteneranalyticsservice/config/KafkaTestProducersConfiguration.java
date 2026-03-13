@@ -9,21 +9,21 @@ import org.springframework.kafka.core.ProducerFactory;
 import pl.bpiatek.contracts.link.LinkClickEventProto.LinkClickEvent;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 
-@TestConfiguration
+//@TestConfiguration
 class KafkaTestProducersConfiguration {
 
-
-    @Bean
-    public KafkaTemplate<String, LinkClickEvent> rawClickEventProducer(KafkaProperties kafkaProperties) {
-        var props = kafkaProperties.buildProducerProperties(null);
-        ProducerFactory<String, LinkClickEvent> pf = new DefaultKafkaProducerFactory<>(props);
-        return new KafkaTemplate<>(pf);
-    }
-
-    @Bean
-    public KafkaTemplate<String, LinkLifecycleEvent> linkLifecycleEventProducer(KafkaProperties kafkaProperties) {
-        var props = kafkaProperties.buildProducerProperties(null);
-        ProducerFactory<String, LinkLifecycleEvent> pf = new DefaultKafkaProducerFactory<>(props);
-        return new KafkaTemplate<>(pf);
-    }
+//
+//    @Bean
+//    public KafkaTemplate<String, LinkClickEvent> rawClickEventProducer(KafkaProperties kafkaProperties) {
+//        var props = kafkaProperties.buildProducerProperties(null);
+//        ProducerFactory<String, LinkClickEvent> pf = new DefaultKafkaProducerFactory<>(props);
+//        return new KafkaTemplate<>(pf);
+//    }
+//
+//    @Bean
+//    public KafkaTemplate<String, LinkLifecycleEvent> linkLifecycleEventProducer(KafkaProperties kafkaProperties) {
+//        var props = kafkaProperties.buildProducerProperties(null);
+//        ProducerFactory<String, LinkLifecycleEvent> pf = new DefaultKafkaProducerFactory<>(props);
+//        return new KafkaTemplate<>(pf);
+//    }
 }
